@@ -13,14 +13,27 @@ require('packer').startup(function()
   use 'wbthomason/packer.nvim'
 
   -- LSP / Autocompletion
-  use 'neovim/nvim-lspconfig'
-  use 'hrsh7th/nvim-cmp'
-  use 'hrsh7th/cmp-nvim-lsp'
-  use 'hrsh7th/cmp-buffer'
-  use 'saadparwaiz1/cmp_luasnip'
-  use 'L3MON4D3/LuaSnip'
-  use 'rust-lang/rust.vim'
-  use  'matklad/rust-analyzer' 
+  use {
+        'VonHeikemen/lsp-zero.nvim',
+        requires = {
+            -- LSP Support
+            { 'williamboman/mason.nvim' },
+            { 'neovim/nvim-lspconfig' },
+            { 'williamboman/mason-lspconfig.nvim' },
+
+            -- Autocompletion
+            { 'hrsh7th/nvim-cmp' },
+            { 'hrsh7th/cmp-buffer' },
+            { 'hrsh7th/cmp-path' },
+            { 'saadparwaiz1/cmp_luasnip' },
+            { 'hrsh7th/cmp-nvim-lsp' },
+            { 'hrsh7th/cmp-nvim-lua' },
+
+            -- Snippets
+            { 'L3MON4D3/LuaSnip' },
+            { 'rafamadriz/friendly-snippets' },
+        }
+    }
 
   -- Diagnostics & Code Actions
   use ({
@@ -161,8 +174,21 @@ end
 
 
 -- LSP settings
-local lspconfig = require 'lspconfig'
-local on_attach = function(_, bufnr)
+
+local lsp = require("lsp-zero")
+
+lsp.preset("recommended")
+
+lsp.ensure_installed({
+    'tsserver',
+    'gopls',
+    'bashls',
+    'pyright',
+    'clangd',
+    'rust_analyzer',
+})
+
+lsp.on_attach(function(client, bufnr)
   local opts = { buffer = bufnr }
   -- vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
   vim.keymap.set('n', 'gd', require('telescope.builtin').lsp_definitions, opts)
@@ -172,20 +198,13 @@ local on_attach = function(_, bufnr)
 
   -- vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, opts)
   -- vim.keymap.set('n', '<leader>D', vim.lsp.buf.type_definition, opts)
-end
+end)
 
 -- nvim-cmp supports additional completion capabilities
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
 
--- Enable the following language servers
-local servers = { 'clangd', 'rust_analyzer', 'pyright', 'tsserver', 'gopls', 'bashls' }
-for _, lsp in ipairs(servers) do
-  lspconfig[lsp].setup {
-    on_attach = on_attach,
-    capabilities = capabilities,
-  }
-end
+lsp.setup()
 
 -- Debugger
 vim.keymap.set("n", "<C-n>", ":NvimTreeToggle<CR>")
