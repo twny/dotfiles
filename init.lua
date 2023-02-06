@@ -138,9 +138,6 @@ vim.api.nvim_create_autocmd('BufWritePost', {
   pattern = vim.fn.expand '$MYVIMRC',
 })
 
--- latte, frappe, macchiato, mocha
-vim.g.catppuccin_flavour = "latte"
--- vim.g.catppuccin_flavour = "mocha"
 vim.cmd.colorscheme "catppuccin"
 
 vim.o.expandtab = true
@@ -191,6 +188,31 @@ vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
   }
 )
 
+-- Debugger
+vim.keymap.set("n", "<C-n>", ":NvimTreeToggle<CR>")
+vim.keymap.set("n", "<Leader>bp", ":DlvToggleBreakpoint<CR>")
+vim.keymap.set("n", "<F5>", ":DlvExec ./tilectl . --\\ server<CR>")
+vim.g.delve_new_command = 'new' -- open dlv in a horiztonal split
+vim.api.nvim_create_user_command("GoFmt", "!gofmt -w %", {})
+vim.api.nvim_create_user_command("GoBuild", "AsyncRun -mode=term -pos=bottom -rows=10 go build -gcflags='all=-N -l' ./cmd/tilectl", {})
+
+-- Telescope
+vim.keymap.set('n', '<leader><space>', require('telescope.builtin').buffers)
+vim.keymap.set('n', '<leader>sb', require('telescope.builtin').current_buffer_fuzzy_find)
+vim.keymap.set('n', '<leader>sh', require('telescope.builtin').help_tags)
+vim.keymap.set('n', '<leader>st', require('telescope.builtin').tags)
+vim.keymap.set('n', '<leader>sd', require('telescope.builtin').grep_string)
+vim.keymap.set('n', '<leader>sp', require('telescope.builtin').live_grep)
+vim.keymap.set('n', '<leader>bb', function() require('telescope.builtin').live_grep({grep_open_files=true}) end)
+vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles)
+vim.keymap.set('n', '<leader>sf', function()
+  require('telescope.builtin').find_files { previewer = false }
+end)
+vim.keymap.set('n', '<leader>so', function()
+  require('telescope.builtin').tags { only_current_buffer = true }
+end)
+
+
 local signs = {
   { name = "DiagnosticSignError", text = "" },
   { name = "DiagnosticSignWarn", text = "" },
@@ -203,15 +225,6 @@ for _, sign in pairs(signs) do
 end
 
 
--- Debugger
-vim.keymap.set("n", "<C-n>", ":NvimTreeToggle<CR>")
-vim.keymap.set("n", "<Leader>bp", ":DlvToggleBreakpoint<CR>")
-vim.keymap.set("n", "<F5>", ":DlvExec ./tilectl . --\\ server<CR>")
-vim.g.delve_new_command = 'new' -- open dlv in a horiztonal split
-vim.api.nvim_create_user_command("GoFmt", "!gofmt -w %", {})
-vim.api.nvim_create_user_command("GoBuild", "AsyncRun -mode=term -pos=bottom -rows=10 go build -gcflags='all=-N -l' ./cmd/tilectl", {})
-
-
 -- Highlight on yank
 local highlight_group = vim.api.nvim_create_augroup('YankHighlight', { clear = true })
 vim.api.nvim_create_autocmd('TextYankPost', {
@@ -222,23 +235,13 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   pattern = '*',
 })
 
+require('indent_blankline').setup({char = '│', show_trailing_blankline_indent = false})
+
 require('Comment').setup()
-require('indent_blankline').setup {
-  char = '│',
-  show_trailing_blankline_indent = false,
-
-}
-
-require('gitsigns').setup {}
-
-require'nvim-tree'.setup {}
-
+require('gitsigns').setup()
+require('nvim-tree').setup()
 require('colorizer').setup(nil, { css = true; })
-
--- Turn on lsp status information
 require('fidget').setup()
-
--- Setup neovim lua configuration
 require('neodev').setup()
 
 -- Telescope
@@ -265,25 +268,6 @@ require('telescope').setup {
     },
   },
 }
--- Enable telescope fzf native, if installed
-pcall(require('telescope').load_extension, 'fzf')
-
--- Telescope
-vim.keymap.set('n', '<leader><space>', require('telescope.builtin').buffers)
-vim.keymap.set('n', '<leader>sb', require('telescope.builtin').current_buffer_fuzzy_find)
-vim.keymap.set('n', '<leader>sh', require('telescope.builtin').help_tags)
-vim.keymap.set('n', '<leader>st', require('telescope.builtin').tags)
-vim.keymap.set('n', '<leader>sd', require('telescope.builtin').grep_string)
-vim.keymap.set('n', '<leader>sp', require('telescope.builtin').live_grep)
-vim.keymap.set('n', '<leader>bb', function() require('telescope.builtin').live_grep({grep_open_files=true}) end)
-vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles)
-vim.keymap.set('n', '<leader>sf', function()
-  require('telescope.builtin').find_files { previewer = false }
-end)
-vim.keymap.set('n', '<leader>so', function()
-  require('telescope.builtin').tags { only_current_buffer = true }
-end)
-
 
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
