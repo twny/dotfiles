@@ -101,7 +101,6 @@ require('packer').startup(function(use)
 
   -- Languages
   use 'sebdah/vim-delve'
-  use 'ludovicchabant/vim-gutentags'
 
   -- Misc
   use 'LnL7/vim-nix'
