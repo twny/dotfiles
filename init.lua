@@ -43,6 +43,10 @@ require('packer').startup(function(use)
     end,
   }
 
+  -- git clone https://github.com/github/copilot.vim.git \
+  -- ~/.vim/pack/github/start/copilot.vim
+  use 'github/copilot.vim'
+
   use { -- Additional text objects via treesitter
     'nvim-treesitter/nvim-treesitter-textobjects',
     after = 'nvim-treesitter',
@@ -139,6 +143,7 @@ vim.api.nvim_create_autocmd('BufWritePost', {
 
 vim.cmd.colorscheme "catppuccin"
 
+
 vim.o.expandtab = true
 vim.o.tabstop = 2
 vim.o.shiftwidth = 2
@@ -164,6 +169,7 @@ vim.o.cmdheight = 0
 vim.keymap.set({ 'n', 'v' }, '<Space>', '<Nop>', { silent = true })
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
+vim.g.copilot_assume_mapped = true
 
 vim.keymap.set({'n'},  '<CR>', ':nohlsearch<cr>', {silent = true})
 
