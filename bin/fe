@@ -1,0 +1,6 @@
+#!/bin/zsh
+
+# Usage: fe
+#local files # set the variables files
+IFS=$'\n' files=($(fd . | fzf-tmux --query="$1" --multi --select-1 --exit-0))
+[[ -n "$files" ]] && ${EDITOR:-nvim} "${files[@]}"
