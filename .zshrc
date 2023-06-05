@@ -8,6 +8,8 @@ export PS1="%~ $ "
 # export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 export PATH=$HOME/bin:$PATH
+PATH=/opt/homebrew/bin:$PATH
+PATH=/opt/homebrew/opt/postgresql@15/bin:$PATH
 
 # Make zsh <C-p> behave like up arrow ↑
 bindkey -e
@@ -26,6 +28,7 @@ export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
 
 # Alias
 alias vim="nvim"
+alias ls="ls -G"
 
 preview() {  qlmanage -p "$@" >& /dev/null; }
 
@@ -38,5 +41,15 @@ gsl(){ git log --pretty=oneline --abbrev-commit | fzf --preview-window down:70% 
 
 eval "$(nodenv init -)"
 eval "$(pyenv init -)"
-# eval "$(rbenv init -)"
+eval "$(rbenv init -)"
 
+# .env files and for python virtual env setups the PS1 (venv)
+eval "$(direnv hook zsh)"
+setopt PROMPT_SUBST
+
+show_virtual_env() {
+  if [[ -n "$VIRTUAL_ENV" && -n "$DIRENV_DIR" ]]; then
+    echo "($(basename $VIRTUAL_ENV))"
+  fi
+}
+PS1='$(show_virtual_env)'$PS1
