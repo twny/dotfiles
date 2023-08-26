@@ -147,6 +147,8 @@ vim.o.tabstop = 2
 vim.o.shiftwidth = 2
 vim.o.softtabstop = 2
 
+vim.o.list = true
+
 vim.o.hlsearch = true
 vim.wo.number = true
 
@@ -215,6 +217,9 @@ vim.keymap.set('n', '<leader>so', function()
   require('telescope.builtin').tags { only_current_buffer = true }
 end)
 
+
+vim.cmd('highlight Trail guifg=red')
+vim.cmd([[ autocmd BufEnter * call matchadd('Trail', '\s\+$') ]])
 
 local signs = {
   { name = "DiagnosticSignError", text = "" },
