@@ -1,52 +1,27 @@
 # Functions
-preview() {  qlmanage -p "$@" >& /dev/null; }
+preview() { qlmanage -p "$@" >& /dev/null; }
 gsl(){ git log --pretty=oneline --abbrev-commit | fzf --preview-window down:70% --preview 'echo {} | cut -f 1 -d " " | xargs git show --color=always'; }
 gfl() { git log --pretty=oneline --abbrev-commit | fzf --preview-window down:70% --preview 'echo {} | cut -f 1 -d " " | xargs -I % git diff-tree --no-commit-id --name-only -r %'; }
 show_virtual_env() {
-# direnv: when dynamically loading a python venv add (venv) to path
+  # direnv: when dynamically loading a python venv add (venv) to path
   if [[ -n "$VIRTUAL_ENV" && -n "$DIRENV_DIR" ]]; then
     echo "($(basename $VIRTUAL_ENV)) "
-  fi
-}
-show_arch_env() {
-  # Add (x86) to prompt when in x86 mode
-  if [ "$(arch)" = "i386" ]; then
-    echo "(x86) "
-  fi
-}
-
-# This function removes a specified path from the PATH environment variable.
-function path_remove {
-  # If the entire PATH is the specified path, set PATH to an empty string.
-  if [ "$PATH" = "$1" ]; then
-    PATH=""
-  else
-    PATH="${PATH//":$1:"/":"}" # Replace ":$1:" (path in middle)
-    PATH="${PATH/#"$1:"/}" # Replace "$1:" (path at beginning)
-    PATH="${PATH/%":$1"/}" # Replace ":$1" (path at end)
   fi
 }
 
 # Note PS1 contains char U+202F or 'Narrow no-break space'
 # from vim in normal mode, cursor over this char
 # type 'ga' to see more information on it!
-export PS1="%~ $ "
-setopt PROMPT_SUBST # PS1 dynamic updates
-PS1='$(show_virtual_env)''$(show_arch_env)'$PS1
+# PS1="%~ $ "
+# setopt PROMPT_SUBST # PS1 dynamic updates
+# PS1='$(show_virtual_env)'$PS1
 
 # Apple /usr/libexec/path_helper | man path_helper
 # https://opensource.apple.com/source/shell_cmds/shell_cmds-162/path_helper/path_helper.c
 # export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 export PATH=$HOME/bin:$PATH
 PATH=/opt/homebrew/bin:$PATH
-# Multiple Homebrews on Apple Silicon
-if [ "$(arch)" = "arm64" ]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-else
-  # Remove the ARM Homebrew path
-  path_remove "/opt/homebrew/bin"
-  eval "$(/usr/local/bin/brew shellenv)"
-fi
+setopt autocd
 
 # Dedupe PATH items
 typeset -U path
@@ -88,3 +63,26 @@ eval "$(pyenv init -)"
 
 # .env files and for python virtual env setups the PS1 (venv)
 eval "$(direnv hook zsh)"
+
+# Rainbow color prompt!
+# it's very cute and makes you more productive
+set_rainbow_prompt() {
+    local input="$(print -P "%~ $") "
+    local prompt_string=""
+    local color_idx=1
+    local color
+
+    for ((i=0; i<${#input}; i++)); do
+        char="${input:$i:1}"
+        color=${rainbow_colors[$color_idx]}
+        prompt_string+="%F{$color}$char"
+        color_idx=$((color_idx % ${#rainbow_colors[@]} + 1))
+    done
+
+    prompt_string+="%F{reset}"
+    PROMPT=$prompt_string
+}
+
+rainbow_colors=("#8c00ff"  "#a000ff"  "#b400ff"  "#c800ff"  "#dc00ff"  "#f000ff"  "#ff00f0"  "#ff00dc"  "#ff00c8"  "#ff00b4"  "#ff00a0"  "#ff008c"  "#ff0078"  "#ff0064"  "#ff0050"  "#ff003c"  "#ff0028"  "#ff0014"  "#ff0000"  "#ff1400"  "#ff2800"  "#ff3c00"  "#ff5000"  "#ff6400"  "#ff7800"  "#ff8c00"  "#ffa000"  "#ffb400"  "#ffc800"  "#ffdc00"  "#fff000"  "#fdff00"  "#e9ff00"  "#d5ff00"  "#c1ff00"  "#adff00"  "#99ff00"  "#85ff00"  "#71ff00"  "#5dff00"  "#49ff00"  "#35ff00"  "#21ff00"  "#0dff00"  "#00ff0d"  "#00ff21"  "#00ff35"  "#00ff49"  "#00ff5d"  "#00ff71"  "#00ff85"  "#00ff99"  "#00ffad"  "#00ffc1"  "#00ffd5"  "#00ffe9"  "#00fffd"  "#00f0ff"  "#00dcff"  "#00c8ff"  "#00b4ff"  "#00a0ff"  "#008cff"  "#0078ff"  "#0064ff"  "#0050ff"  "#003cff"  "#0028ff"  "#0014ff"  "#0000ff"  "#1400ff"  "#2800ff"  "#3c00ff"  "#5000ff"  "#6400ff"  "#7800ff"  )
+
+precmd_functions+=(set_rainbow_prompt)
