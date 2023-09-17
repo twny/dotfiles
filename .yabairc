@@ -1,0 +1,41 @@
+# Set the window layout mode.
+# Options are: bsp (Binary Space Partitioning), stack, or float.
+yabai -m config layout bsp
+
+# Determines how new windows are placed in the space.
+# In this case, 'second_child' means new windows will split the space of the second child of the root node.
+yabai -m config window_placement second_child
+
+# Set the padding for the windows. Padding determines the space between the windows and the screen edge.
+yabai -m config top_padding 12
+yabai -m config bottom_padding 12
+yabai -m config left_padding 12
+yabai -m config right_padding 12
+
+# Set the gap between windows.
+yabai -m config window_gap 12
+
+# Configures whether the mouse cursor should automatically move to a window when it gains focus.
+yabai -m config mouse_follows_focus on
+
+# Set the modifier key for mouse actions. 
+# In this case, holding the 'alt' key will enable mouse actions for window management.
+yabai -m config mouse_modifier alt
+
+# Define the mouse action when left-clicking and dragging.
+# This configures it to move the window.
+yabai -m config mouse_action1 move
+
+# Define the mouse action when right-clicking and dragging.
+# This configures it to resize the window.
+yabai -m config mouse_action2 resize
+
+# Determines the action to be performed when a window is dropped onto another window using the mouse.
+# 'swap' means the two windows will swap places.
+yabai -m config mouse_drop_action swap
+
+# Add rules for specific applications to be managed or not managed by yabai.
+# In this case, System Settings, Calculator, and Karabiner-Elements windows will not be managed by yabai.
+yabai -m rule --add app="^System Settings$" manage=off
+yabai -m rule --add app="^Calculator$" manage=off
+yabai -m rule --add app="^Karabiner-Elements$" manage=off
