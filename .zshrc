@@ -1,9 +1,9 @@
 # Functions
 function deleteRandomLineFromVimrc() {
-    local lineToDelete="$(( 1 + $RANDOM % $(wc -l < .config/nvim/init.lua) ))"
+    local lineToDelete="$(( 1 + $RANDOM % $(wc -l < $HOME/.config/nvim/init.lua) ))"
 
     # Get the content of the line
-    local lineContent=$(sed -n "${lineToDelete}p" .config/nvim/init.lua)
+    local lineContent=$(sed -n "${lineToDelete}p" $HOME/.config/nvim/init.lua)
 
     echo "Selected line number: $lineToDelete"
     echo "Content: $lineContent"
@@ -129,3 +129,5 @@ source /Users/twny/.config/zsh/plugins/fast-syntax-highlighting/fast-syntax-high
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+export BAT_THEME="Catppuccin-mocha"
