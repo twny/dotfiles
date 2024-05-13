@@ -1,5 +1,11 @@
 # rc pieces 🍬
 
+### ~/.config
+the folloing use the `$HOME/.config` directory
+* alacritty
+* tmux
+* neovim
+* karabiner
 
 ### direnv
 
