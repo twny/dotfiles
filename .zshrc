@@ -1,21 +1,3 @@
-# Functions
-function deleteRandomLineFromVimrc() {
-    local lineToDelete="$(( 1 + $RANDOM % $(wc -l < $HOME/.config/nvim/init.lua) ))"
-
-    # Get the content of the line
-    local lineContent=$(sed -n "${lineToDelete}p" $HOME/.config/nvim/init.lua)
-
-    echo "Selected line number: $lineToDelete"
-    echo "Content: $lineContent"
-
-    # Check if the first argument is "confirm"
-    if [[ $1 == "confirm" ]]; then
-        sed -i "${lineToDelete}d" .config/nvim/init.lua
-        echo "Deleted line: $lineToDelete from .config/nvim/init.lua"
-    else
-        echo "To delete the line, run the function with 'confirm' as the argument."
-    fi
-}
 preview() { qlmanage -p "$@" >& /dev/null; }
 gsl(){ git log --pretty=oneline --abbrev-commit | fzf --preview-window down:70% --preview 'echo {} | cut -f 1 -d " " | xargs git show --color=always'; }
 gfl() { git log --pretty=oneline --abbrev-commit | fzf --preview-window down:70% --preview 'echo {} | cut -f 1 -d " " | xargs -I % git diff-tree --no-commit-id --name-only -r %'; }
@@ -25,6 +7,46 @@ show_virtual_env() {
     echo "($(basename $VIRTUAL_ENV)) "
   fi
 }
+switch_tmux_theme() {
+    if [[ "$1" =~ ^(dark|light)$ ]]; then
+        # Set and export the variable outside tmux
+        export TMUX_THEME=$1
+
+        # Update the environment variable inside every tmux session
+        tmux set-environment -g TMUX_THEME $1
+
+        # Source the tmux configuration to apply changes
+        tmux source-file ~/.config/tmux/tmux.conf
+
+        echo "Switched tmux theme to $1 and reloaded configuration."
+    else
+        echo "Invalid theme specified. Use 'dark' or 'light'."
+    fi
+}
+switch_alacritty_theme() {
+    if [[ "$1" =~ ^(dark|light)$ ]]; then
+        # Determine the new theme file based on the input
+        local theme_file="~/.config/alacritty/${1}_theme.toml"
+
+        # Update the Alacritty configuration file
+        sed -i '' "s|import = \[.*|import = \[ \"$theme_file\", \"~/.config/alacritty/keybindings.toml\" \]|" $HOME/.config/alacritty/alacritty.toml
+
+        echo "Switched Alacritty theme to $1."
+    else
+        echo "Invalid theme specified. Use 'dark' or 'light'."
+    fi
+}
+theme() {
+    if [[ "$1" =~ ^(dark|light)$ ]]; then
+        # Call existing functions to switch themes
+        switch_tmux_theme $1
+        switch_alacritty_theme $1
+    else
+        echo "Invalid theme specified. Use 'dark' or 'light'."
+    fi
+}
+ppcsv() { sed 's/,/ ,/g' "$@"| column -t -s, | less -S; } # pretty prints a csv using column (note: sed adds a space because column merges empty fields)
+gtree() { tree -I "$(git ls-files --exclude-standard -oi --directory | tr '\n' '|' | sed 's/|$//')"; }
 
 # Note PS1 contains char U+202F or 'Narrow no-break space'
 # from vim in normal mode, cursor over this char
@@ -36,8 +58,13 @@ show_virtual_env() {
 # Apple /usr/libexec/path_helper | man path_helper
 # https://opensource.apple.com/source/shell_cmds/shell_cmds-162/path_helper/path_helper.c
 # export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+export HOMEBREW_PREFIX="/opt/homebrew";
+export HOMEBREW_CELLAR="/opt/homebrew/Cellar";
+export HOMEBREW_REPOSITORY="/opt/homebrew";
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin${PATH+:$PATH}";
+export MANPATH="/opt/homebrew/share/man${MANPATH+:$MANPATH}:";
+export INFOPATH="/opt/homebrew/share/info:${INFOPATH:-}";
 export PATH=$HOME/bin:$PATH
-PATH=/opt/homebrew/bin:$PATH
 setopt autocd
 
 # Dedupe PATH items
@@ -117,6 +144,32 @@ rainbow_colors=(
 )
 
 
+rainbow_colors_light=(
+  "#8839ef"  "#9546f0"  "#a253f2"  "#af60f3"  "#bc6df5"  "#c97af6"
+  "#d687f8"  "#e394f9"  "#f0a1fb"  "#fdaffc"  "#ea76cb"  "#e168bc"
+  "#d859ad"  "#cf4b9e"  "#c63c8f"  "#bd2e80"  "#d20f39"  "#ca2346"
+  "#c33753"  "#bb4b60"  "#b45f6d"  "#ad737a"  "#fe640b"  "#f0721d"
+  "#e3802f"  "#d58e41"  "#c79c53"  "#b9aa65"  "#e49320"  "#d89a3a"
+  "#cca154"  "#c0a86e"  "#b4af88"  "#a8b6a2"  "#40a02b"  "#55932e"
+  "#6a8631"  "#7f7934"  "#947c37"  "#a9803a"  "#7287fd"  "#667bdd"
+  "#5b6fdd"  "#5063dd"  "#4557dd"  "#3a4bdd"  "#2f3fdd"  "#2433dd"
+  "#1937dd"  "#0e3bdd"  "#033fdd"  "#2a6ef5"  "#3874f6"  "#467af7"
+)
+# rainbow_colors_light=(
+#   "#660099"  "#7500AB"  "#8400BF"  "#9300D2"  "#A200E6"  "#B100FF"
+#   "#C800E6"  "#D200D2"  "#DD00BF"  "#E700AB"  "#F20099"  "#FF0088"
+#   "#FF0066"  "#FF0055"  "#FF0044"  "#FF0033"  "#FF0022"  "#FF0011"
+#   "#FF0000"  "#E60000"  "#CC0000"  "#B30000"  "#990000"  "#800000"
+#   "#660000"  "#4D0000"  "#330000"  "#1A0000"  "#000000"  "#333300"
+#   "#666600"  "#999900"  "#CCCC00"  "#FFFF00"  "#CCCC00"  "#999900"
+#   "#666600"  "#333300"  "#000000"  "#003300"  "#006600"  "#009900"
+#   "#00CC00"  "#00FF00"  "#00CC00"  "#009900"  "#006600"  "#003300"
+#   "#000066"  "#003399"  "#0066CC"  "#0099FF"  "#00CCCC"  "#00FFFF"
+#   "#00CCCC"  "#0099FF"  "#0066CC"  "#003399"  "#000066"  "#330099"
+#   "#4D0099"  "#660099"  "#800099"  "#990099"  "#B30099"
+# )
+
+
 precmd_functions+=(set_rainbow_prompt)
 
 # This gives syntax highlight thanks twitch chat
@@ -131,3 +184,4 @@ export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
 export BAT_THEME="Catppuccin-mocha"
+export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
