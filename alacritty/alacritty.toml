@@ -1,0 +1,18 @@
+import = [
+  "~/.config/alacritty/theme.toml",
+  "~/.config/alacritty/keybindings.toml"
+]
+
+[window]
+decorations = "buttonless"
+dynamic_title = true
+title = "Terminal"
+
+[window.dimensions]
+columns = 81
+lines = 25
+
+[window.padding]
+x = 0
+y = 0
+

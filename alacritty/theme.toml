@@ -1,0 +1,42 @@
+[colors.primary]
+# background = "#FFFFFF"
+# foreground = "#000000"
+foreground = "#FFFFFF"
+background = "#000000"
+
+[colors.bright]
+black = "#424242"
+blue = "#3E7FEE"
+cyan = "#0CBACD"
+green = "#0ED9A5"
+magenta = "#D48DFC"
+red = "#EC3D63"
+white = "#F0F1F1"
+yellow = "#FEF937"
+
+[colors.normal]
+black = "#000000"
+blue = "#5891F8"
+cyan = "#43B9FC"
+green = "#3BBE89"
+magenta = "#CE78F3"
+red = "#E64B6A"
+white = "#BFBFBF"
+yellow = "#FD7B31"
+
+[colors.cursor]
+cursor = "#FC2A1C"
+
+[colors.search.focused_match]
+background = "#FEF937"
+foreground = "#000000"
+
+[colors.search.matches]
+background = "#E3E3E3"
+foreground = "#000000"
+
+[font]
+size = 12.0
+
+[font.normal]
+family = "Liga SFMono Nerd Font"
