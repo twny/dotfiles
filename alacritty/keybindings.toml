@@ -1,0 +1,46 @@
+# NOTE: use `$ xxd -psd` to capture a hex dump of key inputs for mapping super
+# key (e.g. ⌘) chords to Ctrl bindings for tmux
+[keyboard]
+bindings = [
+  { key = "Key0", mods = "Alt", chars = "\u001B0" },
+  { key = "Key1", mods = "Alt", chars = "\u001B1" },
+  { key = "Key2", mods = "Alt", chars = "\u001B2" },
+  { key = "Key3", mods = "Alt", chars = "\u001B3" },
+  { key = "Key4", mods = "Alt", chars = "\u001B4" },
+  { key = "Key5", mods = "Alt", chars = "\u001B5" },
+  { key = "Key6", mods = "Alt", chars = "\u001B6" },
+  { key = "Key7", mods = "Alt", chars = "\u001B7" },
+  { key = "Key8", mods = "Alt", chars = "\u001B8" },
+  { key = "Key9", mods = "Alt", chars = "\u001B9" },
+
+  # ⌘ D    Vertical Split
+  { key = "D", mods = "Command", chars = "\u0002%" },
+  # ⌘ ⇧ D  Horizontal Split
+  { key = "D", mods = "Command|Shift", chars = "\u0002\"" },
+  # ⌘ T    Create new Window ('tab')
+  { key = "T", mods = "Command",chars = "\u0002c" },
+
+  #
+  # NOTE: shift changes [] to {}. map `logical_key`s "{"  "}" for binding
+  #
+  # ⌘ ⇧ [  Move to previous Window
+  { key = "{", mods = "Command|Shift", chars = "\u0002p" },
+  # ⌘ ⇧ ]  Move to next Window
+  { key = "}", mods = "Command|Shift", chars = "\u0002n" },
+
+  # ⌘ W    Kill Window and Kill pane
+  { key = "W", mods = "Command", chars = "\u0002x" },
+
+  # Move between panes
+  # ⌘ ←  Move Left
+  { key = "Left", mods = "Command", chars = "\u0002\u001B[D" },
+  # ⌘ →  Move Right
+  { key = "Right", mods = "Command", chars = "\u0002\u001B[C" },
+  # ⌘ ↓  Move Down
+  { key = "Down", mods = "Command", chars = "\u0002\u001B[B" },
+  # ⌘ ↑ Move Up
+  { key = "Up", mods = "Command", chars = "\u0002\u001B[A" },
+  # ⌘ K Clear window (mimic macOS)
+  { key = "K", mods = "Command", chars = "\u0002k" }
+]
+

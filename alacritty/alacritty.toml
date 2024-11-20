@@ -1,7 +1,14 @@
-import = [
-  "~/.config/alacritty/theme.toml",
-  "~/.config/alacritty/keybindings.toml"
-]
+[general]
+import = [ "~/.config/alacritty/dark_theme.toml", "~/.config/alacritty/keybindings.toml" ]
+
+[font]
+size = 14.0
+
+[font.normal]
+family = "Liga SFMono Nerd Font"
+
+[colors.cursor]
+cursor = "#FC2A1C"
 
 [window]
 decorations = "buttonless"
