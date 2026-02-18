@@ -5,7 +5,11 @@ import = [ "~/.config/alacritty/dark_theme.toml", "~/.config/alacritty/keybindin
 size = 14.0
 
 [font.normal]
-family = "Liga SFMono Nerd Font"
+family = "SFMono Nerd Font"
+
+[env]
+TERM = "alacritty"
+COLORTERM = "truecolor"
 
 [colors.cursor]
 cursor = "#FC2A1C"
@@ -22,4 +26,3 @@ lines = 25
 [window.padding]
 x = 0
 y = 0
-

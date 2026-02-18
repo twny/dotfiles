@@ -1,6 +1,27 @@
+-- usage
+-- :rawjson → toggles into raw JSON lines mode
+-- :tablemode → restores comfy defaults
+
+
+-- for copying things directly macOS clipboard
+-- \copy (select mod_payload::text from attachments where mod_label = 'block' limit 10) to program 'pbcopy';
+
+-- for aggregating many rows of json into a single json array
+-- all rows into one JSON array
+-- SELECT jsonb_agg(your_jsonb_col)::text FROM your_table WHERE  ...;
+
+
+-- prompt
 \set PROMPT1 '%n@%/%R%x%# '
 \set PROMPT2 '%R%x%# '
+
+-- comfy defaults
 \pset border 2
 \pset format wrapped
 \pset linestyle unicode
 \pset null NULL
+\pset pager on
+
+-- === quick toggles ===
+\set rawjson '\\a \\t \\pset format unaligned \\pset border 0 \\pset columns 0 \\pset pager off'
+\set tablemode '\\pset format wrapped \\pset border 2 \\pset linestyle unicode \\a \\t off \\pset pager on'

@@ -1,6 +1,13 @@
 preview() { qlmanage -p "$@" >& /dev/null; }
 gsl(){ git log --pretty=oneline --abbrev-commit | fzf --preview-window down:70% --preview 'echo {} | cut -f 1 -d " " | xargs git show --color=always'; }
 gfl() { git log --pretty=oneline --abbrev-commit | fzf --preview-window down:70% --preview 'echo {} | cut -f 1 -d " " | xargs -I % git diff-tree --no-commit-id --name-only -r %'; }
+canvas() {
+  local tmp="$TMPDIR/canvas-$(date +%s).png"
+  # Make a 1px transparent GIF in base64, then resize to 2000×2000 PNG
+  printf 'R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==' | base64 --decode > "$TMPDIR/p.gif"
+  sips -s format png -z 2000 2000 "$TMPDIR/p.gif" --out "$tmp" >/dev/null
+  open -a Preview "$tmp"
+}
 show_virtual_env() {
   # direnv: when dynamically loading a python venv add (venv) to path
   if [[ -n "$VIRTUAL_ENV" && -n "$DIRENV_DIR" ]]; then
@@ -24,17 +31,14 @@ switch_tmux_theme() {
     fi
 }
 switch_alacritty_theme() {
-    if [[ "$1" =~ ^(dark|light)$ ]]; then
-        # Determine the new theme file based on the input
-        local theme_file="~/.config/alacritty/${1}_theme.toml"
-
-        # Update the Alacritty configuration file
-        sed -i '' "s|import = \[.*|import = \[ \"$theme_file\", \"~/.config/alacritty/keybindings.toml\" \]|" $HOME/.config/alacritty/alacritty.toml
-
-        echo "Switched Alacritty theme to $1."
-    else
-        echo "Invalid theme specified. Use 'dark' or 'light'."
-    fi
+  if [[ "$1" =~ ^(dark|light)$ ]]; then
+    local theme_file="$HOME/.config/alacritty/${1}_theme.toml"
+    sed -i '' "s|^import = \\[.*|import = [ \"$theme_file\", \"$HOME/.config/alacritty/keybindings.toml\" ]|" \
+      "$HOME/.config/alacritty/alacritty.toml"
+    echo "Switched Alacritty theme to $1."
+  else
+    echo "Invalid theme specified. Use 'dark' or 'light'."
+  fi
 }
 theme() {
     if [[ "$1" =~ ^(dark|light)$ ]]; then
@@ -47,6 +51,104 @@ theme() {
 }
 ppcsv() { sed 's/,/ ,/g' "$@"| column -t -s, | less -S; } # pretty prints a csv using column (note: sed adds a space because column merges empty fields)
 gtree() { tree -I "$(git ls-files --exclude-standard -oi --directory | tr '\n' '|' | sed 's/|$//')"; }
+cf() {
+  # collect all args, default to "." if none
+  local paths=( "$@" )
+  if [ ${#paths[@]} -eq 0 ]; then
+    paths=( "." )
+  fi
+
+  # feed all paths to git ls-files
+  git ls-files -- "${paths[@]}" \
+    | grep -Ev '(pnpm-lock\.yaml|bun\.lock|package-lock\.json)$' \
+    | while IFS= read -r file; do
+        echo "==> $file <=="
+        # skip images
+        if file "$file" | grep -qE 'image|icon|bitmap'; then
+          continue
+        fi
+        tail -n +1 "$file"
+      done
+}
+
+fe() {
+  local files
+  IFS=$'\n' files=($(
+    fd --type f --hidden --follow --exclude .git \
+      | fzf-tmux --multi --select-1 --exit-0 \
+  ))
+  [[ -n "$files" ]] && ${EDITOR:-nvim} "${files[@]}"
+}
+
+fmtgo() { git status --porcelain | awk '/^ M/ {print $2}' | xargs gofmt -w; }
+# git
+gs() { git status; }
+gss() { git status --short; }
+gb() { git branch -vv; }
+gco() { git checkout "$@"; }
+gc() { git commit -m "$*"; }
+gca() { git commit --amend --no-edit; }
+gl() { git log --oneline --graph --decorate --all; }
+gp() { git pull --rebase origin "$(git rev-parse --abbrev-ref HEAD)"; }
+gpush() { git push origin "$(git rev-parse --abbrev-ref HEAD)"; }
+
+
+athenaq() {
+  local WG="logpipe"
+  local DB="efchat_logs_db"
+  local OUTPUT="s3://efchat-logs-athena-results/"
+  local PROFILE="${AWS_PROFILE:-default}"
+  local SQL="$*"
+
+  if [[ -z "$SQL" ]]; then
+    echo "usage: athenaq <SQL...>" >&2
+    return 64
+  fi
+
+  local QID
+  QID=$(aws athena start-query-execution \
+    --work-group "$WG" \
+    --query-string "$SQL" \
+    --query-execution-context "Database=$DB" \
+    --result-configuration "OutputLocation=$OUTPUT" \
+    --profile "$PROFILE" \
+    --query "QueryExecutionId" \
+    --output text) || return 1
+  echo "QID=$QID"
+
+  local STATE
+  while true; do
+    STATE=$(aws athena get-query-execution \
+      --query-execution-id "$QID" \
+      --profile "$PROFILE" \
+      --query 'QueryExecution.Status.State' \
+      --output text)
+    [[ "$STATE" != "RUNNING" && "$STATE" != "QUEUED" ]] && break
+    sleep 2
+  done
+
+  aws athena get-query-execution \
+    --query-execution-id "$QID" \
+    --profile "$PROFILE" \
+    --query 'QueryExecution.Status' \
+    --output table
+
+  if [[ "$STATE" == "SUCCEEDED" ]]; then
+    aws athena get-query-results \
+      --query-execution-id "$QID" \
+      --profile "$PROFILE" \
+      --output table
+  else
+    aws athena get-query-execution \
+      --query-execution-id "$QID" \
+      --profile "$PROFILE" \
+      --query 'QueryExecution.Status.StateChangeReason' \
+      --output text
+    return 2
+  fi
+}
+
+
 
 # Note PS1 contains char U+202F or 'Narrow no-break space'
 # from vim in normal mode, cursor over this char
@@ -80,17 +182,17 @@ bindkey '^xe' edit-command-line
 bindkey '^x^e' edit-command-line
 
 # Settings
-export HISTCONTROL="ignorespace"
-export HISTFILESIZE=1000000
-export HISTSIZE=1000000
+setopt EXTENDED_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_ALL_DUPS INC_APPEND_HISTORY SHARE_HISTORY
+HISTFILE=$HOME/.zsh_history
+HISTSIZE=1000000
+SAVEHIST=1000000
 
 export VISUAL=nvim
 export EDITOR=nvim
 
-export FZF_DEFAULT_OPTS=--reverse
-export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'
-    --color=fg:-1,bg:-1,fg+:-1,bg+:-1,hl+:4,hl:4
-    --color=spinner:-1,info:-1,prompt:-1,pointer:1'
+export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --reverse \
+  --color=fg:-1,bg:-1,fg+:-1,bg+:-1,hl+:4,hl:4 \
+  --color=spinner:-1,info:-1,prompt:-1,pointer:1"
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
 
 # Alias
@@ -101,12 +203,9 @@ alias x86='arch -x86_64 zsh'
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-eval "$(nodenv init -)"
-eval "$(pyenv init -)"
-# eval "$(rbenv init -)"
-
-# .env files and for python virtual env setups the PS1 (venv)
-eval "$(direnv hook zsh)"
+if command -v nodenv >/dev/null 2>&1; then
+  eval "$(nodenv init -)"
+fi
 
 # Rainbow color prompt!
 # it's very cute and makes you more productive
@@ -169,19 +268,117 @@ rainbow_colors_light=(
 #   "#4D0099"  "#660099"  "#800099"  "#990099"  "#B30099"
 # )
 
-
 precmd_functions+=(set_rainbow_prompt)
 
 # This gives syntax highlight thanks twitch chat
 # git clone https://github.com/zdharma-continuum/fast-syntax-highlighting ~/path/to/location
-source /Users/twny/.config/zsh/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh
+[ -r "$HOME/.config/zsh/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ] && \
+  source "$HOME/.config/zsh/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
 
 # bun completions
-[ -s "/Users/twny/.bun/_bun" ] && source "/Users/twny/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
 export BAT_THEME="Catppuccin-mocha"
-export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
+export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+
+
+
+
+
+
+
+
+################################################################################
+# REDIS EFCHAT
+################################################################################
+# List all moderation keys (works in prod)
+redis_scan_moderation() {
+  local redis_url="$1"
+  if [[ -z "$redis_url" ]]; then
+    echo "Usage: redis_scan_moderation <redis://...>"
+    return 1
+  fi
+
+  echo "Moderation keys in Redis:"
+  for pattern in "strike:user:*" "strike:ip:*" "mute:user:*" "mute:ip:*" "ban:user:*" "ban:ip:*"; do
+    echo "=== $pattern ==="
+    local cursor=0
+    while :; do
+      # Call redis-cli, suppress stderr for warnings
+      result=$(redis-cli -u "$redis_url" --raw SCAN "$cursor" MATCH "$pattern" COUNT 10000 2>/dev/null)
+      cursor=$(echo "$result" | head -n1)
+      keys=$(echo "$result" | tail -n +2)
+      if [[ -n "$keys" ]]; then
+        echo "$keys"
+      fi
+      [[ "$cursor" == "0" ]] && break
+    done
+  done
+}
+
+# strike counts
+redis_strike_counts() {
+  local REDIS_URL="$1"
+  for k in "strike:user:*" "strike:ip:*"; do
+    echo "=== $k ==="
+    redis-cli -u "$REDIS_URL" --raw KEYS "$k" 2>/dev/null | while read key; do
+      [ -n "$key" ] && {
+        count=$(redis-cli -u "$REDIS_URL" GET "$key" 2>/dev/null)
+        ttl=$(redis-cli -u "$REDIS_URL" TTL "$key" 2>/dev/null)
+        if [ "$ttl" -ge 0 ]; then
+          days=$((ttl / 86400))
+          hours=$(( (ttl % 86400) / 3600 ))
+          mins=$(( (ttl % 3600) / 60 ))
+          secs=$(( ttl % 60 ))
+          echo "$key -> strikes: $count | TTL: $ttl (${days}d ${hours}h ${mins}m ${secs}s)"
+        else
+          echo "$key -> strikes: $count | TTL: $ttl"
+        fi
+      }
+    done
+  done
+}
+
+# List moderation keys and their TTLs, with human-readable time, supporting a connection string
+redis_check_ttl_moderation() {
+  REDIS_CONN="$1"
+  for k in "strike:user:*" "strike:ip:*" "mute:user:*" "mute:ip:*" "ban:user:*" "ban:ip:*"; do
+    echo "=== $k ==="
+    redis-cli -u "$REDIS_CONN" --raw KEYS "$k" 2>/dev/null | while read key; do
+      [ -n "$key" ] && {
+        ttl=$(redis-cli -u "$REDIS_CONN" TTL "$key" 2>/dev/null)
+        if [ "$ttl" -ge 0 ]; then
+          days=$((ttl / 86400))
+          hours=$(( (ttl % 86400) / 3600 ))
+          mins=$(( (ttl % 3600) / 60 ))
+          secs=$(( ttl % 60 ))
+          echo "$key -> TTL: $ttl (${days}d ${hours}h ${mins}m ${secs}s)"
+        else
+          echo "$key -> TTL: $ttl"
+        fi
+      }
+    done
+  done
+}
+
+# Delete all moderation keys (dev/test only)
+redis_clear_moderation() {
+  for pattern in "strike:user:*" "strike:ip:*" "mute:user:*" "mute:ip:*" "ban:user:*" "ban:ip:*"; do
+    keys=$(redis-cli --raw KEYS "$pattern")
+    if [[ -n "$keys" ]]; then
+      echo "Deleting keys for $pattern..."
+      redis-cli DEL $keys
+    fi
+  done
+  echo "All moderation keys deleted."
+}
+
+if command -v pyenv >/dev/null 2>&1; then
+  export PYENV_ROOT="${PYENV_ROOT:-$HOME/.pyenv}"
+  [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+  eval "$(pyenv init - zsh)"
+fi

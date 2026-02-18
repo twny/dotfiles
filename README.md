@@ -1,5 +1,27 @@
 # rc pieces 🍬
 
+### install
+
+```sh
+./install.sh
+```
+
+This links files from this repo into `$HOME` and `$HOME/.config`.
+If a target already exists, it is moved to a timestamped backup first.
+This also links `.fzf.zsh`.
+
+Install Homebrew dependencies first (optional):
+
+```sh
+./install.sh --deps
+```
+
+Optional (for pretty syntax colors in zsh):
+
+```sh
+git clone --depth=1 https://github.com/zdharma-continuum/fast-syntax-highlighting "$HOME/.config/zsh/plugins/fast-syntax-highlighting"
+```
+
 ### ~/.config
 the folloing use the `$HOME/.config` directory
 * alacritty
@@ -30,7 +52,7 @@ eval "$(pyenv init -)"
 eval "$(nodenv init -)"
 eval "$(pyenv init --path)"
 
-export PYTHONPATH=$PYTHONPATH:/Users/<user>/src/<project>
+export PYTHONPATH=$PYTHONPATH:$HOME/src/<project>
 export VIRTUAL_ENV=venv
 layout python
 ```
