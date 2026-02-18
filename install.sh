@@ -73,5 +73,11 @@ if [ ! -r "$PLUGIN_DIR/fast-syntax-highlighting.plugin.zsh" ]; then
   echo "  git clone --depth=1 https://github.com/zdharma-continuum/fast-syntax-highlighting \"$PLUGIN_DIR\""
 fi
 
+if ls "$REPO_DIR"/fonts/*.otf >/dev/null 2>&1; then
+  echo
+  echo "Optional Nerd Font install (macOS):"
+  echo "  cp \"$REPO_DIR\"/fonts/*.otf \"$HOME/Library/Fonts/\""
+fi
+
 echo
 echo "Done."

@@ -22,6 +22,12 @@ Optional (for pretty syntax colors in zsh):
 git clone --depth=1 https://github.com/zdharma-continuum/fast-syntax-highlighting "$HOME/.config/zsh/plugins/fast-syntax-highlighting"
 ```
 
+Optional (install bundled Nerd Font files on macOS):
+
+```sh
+cp ./fonts/*.otf "$HOME/Library/Fonts/"
+```
+
 ### ~/.config
 the folloing use the `$HOME/.config` directory
 * alacritty
