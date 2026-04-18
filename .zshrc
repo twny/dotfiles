@@ -93,63 +93,6 @@ gp() { git pull --rebase origin "$(git rev-parse --abbrev-ref HEAD)"; }
 gpush() { git push origin "$(git rev-parse --abbrev-ref HEAD)"; }
 
 
-athenaq() {
-  local WG="logpipe"
-  local DB="efchat_logs_db"
-  local OUTPUT="s3://efchat-logs-athena-results/"
-  local PROFILE="${AWS_PROFILE:-default}"
-  local SQL="$*"
-
-  if [[ -z "$SQL" ]]; then
-    echo "usage: athenaq <SQL...>" >&2
-    return 64
-  fi
-
-  local QID
-  QID=$(aws athena start-query-execution \
-    --work-group "$WG" \
-    --query-string "$SQL" \
-    --query-execution-context "Database=$DB" \
-    --result-configuration "OutputLocation=$OUTPUT" \
-    --profile "$PROFILE" \
-    --query "QueryExecutionId" \
-    --output text) || return 1
-  echo "QID=$QID"
-
-  local STATE
-  while true; do
-    STATE=$(aws athena get-query-execution \
-      --query-execution-id "$QID" \
-      --profile "$PROFILE" \
-      --query 'QueryExecution.Status.State' \
-      --output text)
-    [[ "$STATE" != "RUNNING" && "$STATE" != "QUEUED" ]] && break
-    sleep 2
-  done
-
-  aws athena get-query-execution \
-    --query-execution-id "$QID" \
-    --profile "$PROFILE" \
-    --query 'QueryExecution.Status' \
-    --output table
-
-  if [[ "$STATE" == "SUCCEEDED" ]]; then
-    aws athena get-query-results \
-      --query-execution-id "$QID" \
-      --profile "$PROFILE" \
-      --output table
-  else
-    aws athena get-query-execution \
-      --query-execution-id "$QID" \
-      --profile "$PROFILE" \
-      --query 'QueryExecution.Status.StateChangeReason' \
-      --output text
-    return 2
-  fi
-}
-
-
-
 # Note PS1 contains char U+202F or 'Narrow no-break space'
 # from vim in normal mode, cursor over this char
 # type 'ga' to see more information on it!
@@ -270,10 +213,11 @@ rainbow_colors_light=(
 
 precmd_functions+=(set_rainbow_prompt)
 
-# This gives syntax highlight thanks twitch chat
-# git clone https://github.com/zdharma-continuum/fast-syntax-highlighting ~/path/to/location
-[ -r "$HOME/.config/zsh/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ] && \
+# Optional: set ENABLE_FAST_SYNTAX_HIGHLIGHTING=0 to disable if input issues return.
+if [[ "${ENABLE_FAST_SYNTAX_HIGHLIGHTING:-1}" == "1" ]] && \
+   [[ -r "$HOME/.config/zsh/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ]]; then
   source "$HOME/.config/zsh/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
+fi
 
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
@@ -283,102 +227,14 @@ export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
 export BAT_THEME="Catppuccin-mocha"
-export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
-
-
-
-
-
-
-
-
-################################################################################
-# REDIS EFCHAT
-################################################################################
-# List all moderation keys (works in prod)
-redis_scan_moderation() {
-  local redis_url="$1"
-  if [[ -z "$redis_url" ]]; then
-    echo "Usage: redis_scan_moderation <redis://...>"
-    return 1
-  fi
-
-  echo "Moderation keys in Redis:"
-  for pattern in "strike:user:*" "strike:ip:*" "mute:user:*" "mute:ip:*" "ban:user:*" "ban:ip:*"; do
-    echo "=== $pattern ==="
-    local cursor=0
-    while :; do
-      # Call redis-cli, suppress stderr for warnings
-      result=$(redis-cli -u "$redis_url" --raw SCAN "$cursor" MATCH "$pattern" COUNT 10000 2>/dev/null)
-      cursor=$(echo "$result" | head -n1)
-      keys=$(echo "$result" | tail -n +2)
-      if [[ -n "$keys" ]]; then
-        echo "$keys"
-      fi
-      [[ "$cursor" == "0" ]] && break
-    done
-  done
-}
-
-# strike counts
-redis_strike_counts() {
-  local REDIS_URL="$1"
-  for k in "strike:user:*" "strike:ip:*"; do
-    echo "=== $k ==="
-    redis-cli -u "$REDIS_URL" --raw KEYS "$k" 2>/dev/null | while read key; do
-      [ -n "$key" ] && {
-        count=$(redis-cli -u "$REDIS_URL" GET "$key" 2>/dev/null)
-        ttl=$(redis-cli -u "$REDIS_URL" TTL "$key" 2>/dev/null)
-        if [ "$ttl" -ge 0 ]; then
-          days=$((ttl / 86400))
-          hours=$(( (ttl % 86400) / 3600 ))
-          mins=$(( (ttl % 3600) / 60 ))
-          secs=$(( ttl % 60 ))
-          echo "$key -> strikes: $count | TTL: $ttl (${days}d ${hours}h ${mins}m ${secs}s)"
-        else
-          echo "$key -> strikes: $count | TTL: $ttl"
-        fi
-      }
-    done
-  done
-}
-
-# List moderation keys and their TTLs, with human-readable time, supporting a connection string
-redis_check_ttl_moderation() {
-  REDIS_CONN="$1"
-  for k in "strike:user:*" "strike:ip:*" "mute:user:*" "mute:ip:*" "ban:user:*" "ban:ip:*"; do
-    echo "=== $k ==="
-    redis-cli -u "$REDIS_CONN" --raw KEYS "$k" 2>/dev/null | while read key; do
-      [ -n "$key" ] && {
-        ttl=$(redis-cli -u "$REDIS_CONN" TTL "$key" 2>/dev/null)
-        if [ "$ttl" -ge 0 ]; then
-          days=$((ttl / 86400))
-          hours=$(( (ttl % 86400) / 3600 ))
-          mins=$(( (ttl % 3600) / 60 ))
-          secs=$(( ttl % 60 ))
-          echo "$key -> TTL: $ttl (${days}d ${hours}h ${mins}m ${secs}s)"
-        else
-          echo "$key -> TTL: $ttl"
-        fi
-      }
-    done
-  done
-}
-
-# Delete all moderation keys (dev/test only)
-redis_clear_moderation() {
-  for pattern in "strike:user:*" "strike:ip:*" "mute:user:*" "mute:ip:*" "ban:user:*" "ban:ip:*"; do
-    keys=$(redis-cli --raw KEYS "$pattern")
-    if [[ -n "$keys" ]]; then
-      echo "Deleting keys for $pattern..."
-      redis-cli DEL $keys
-    fi
-  done
-  echo "All moderation keys deleted."
-}
 
 if command -v pyenv >/dev/null 2>&1; then
   export PYENV_ROOT="${PYENV_ROOT:-$HOME/.pyenv}"
   [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
   eval "$(pyenv init - zsh)"
 fi
+
+# Keep machine-specific paths, work helpers, and secrets in .zshrc.local.
+ZSHRC_DIR="${${(%):-%N}:A:h}"
+[ -f "$ZSHRC_DIR/.zshrc.local" ] && source "$ZSHRC_DIR/.zshrc.local"
+unset ZSHRC_DIR

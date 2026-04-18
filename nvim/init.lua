@@ -412,6 +412,9 @@ require('lazy').setup({
       vim.list_extend(ensure_installed, { 'stylua' })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
       require('mason-lspconfig').setup {
+        automatic_enable = {
+          exclude = { 'glint' },
+        },
         handlers = {
           function(server_name)
             local server = servers[server_name] or {}
@@ -486,19 +489,50 @@ require('lazy').setup({
   -- Treesitter for syntax highlighting and more
   {
     'nvim-treesitter/nvim-treesitter',
+    lazy = false,
     build = ':TSUpdate',
-    opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'vim', 'vimdoc' },
-      auto_install = true,
-      highlight = {
-        enable = true,
-        additional_vim_regex_highlighting = { 'ruby' },
-      },
-      indent = { enable = true, disable = { 'ruby' } },
-    },
-    config = function(_, opts)
+    config = function()
+      local ts = require('nvim-treesitter')
+      local languages = {
+        'bash',
+        'c',
+        'diff',
+        'go',
+        'gomod',
+        'gosum',
+        'gowork',
+        'html',
+        'lua',
+        'luadoc',
+        'markdown',
+        'vim',
+        'vimdoc',
+      }
+
       require('nvim-treesitter.install').prefer_git = true
-      require('nvim-treesitter.configs').setup(opts)
+      ts.setup {
+        install_dir = vim.fn.stdpath('data') .. '/site',
+      }
+
+      local installed = ts.get_installed('parsers')
+      local missing = vim.tbl_filter(function(lang)
+        return not vim.list_contains(installed, lang)
+      end, languages)
+      if #missing > 0 then
+        ts.install(missing, { summary = true })
+      end
+
+      local ts_group = vim.api.nvim_create_augroup('TreesitterFiletypes', { clear = true })
+      vim.api.nvim_create_autocmd('FileType', {
+        group = ts_group,
+        callback = function(args)
+          pcall(vim.treesitter.start, args.buf)
+
+          if vim.bo[args.buf].filetype == 'go' then
+            vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+          end
+        end,
+      })
     end,
   },
 
@@ -541,7 +575,9 @@ require('lazy').setup({
   -- Commenting
   { 'numToStr/Comment.nvim', opts = {} },
 
-}, {})
+}, {
+  rocks = { enabled = false },
+})
 
 -- -- (Optional) Diagnostic signs (if you prefer custom icons)
 -- local signs = {
