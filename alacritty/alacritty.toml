@@ -1,5 +1,5 @@
 [general]
-import = [ "~/.config/alacritty/dark_theme.toml", "~/.config/alacritty/keybindings.toml" ]
+import = [ "dark_theme.toml", "keybindings.toml" ]
 
 [font]
 size = 14.0

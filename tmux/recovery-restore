@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+state_file="${TMUX_RECOVERY_FILE:-$HOME/.local/state/tmux/recovery.tsv}"
+
+if [ ! -r "$state_file" ]; then
+  printf 'No tmux recovery state found at %s\n' "$state_file" >&2
+  exit 1
+fi
+
+if ! command -v tmux >/dev/null 2>&1; then
+  printf 'tmux is not installed or not on PATH\n' >&2
+  exit 1
+fi
+
+tmx() {
+  ${TMUX_COMMAND:-tmux} "$@"
+}
+
+declare -A windows
+declare -A layouts
+declare -A panes
+declare -A seen_sessions
+declare -A restored_sessions
+active_session=''
+active_window=''
+active_pane=''
+restored_count=0
+skipped_count=0
+
+while IFS=$'\t' read -r kind session window rest1 rest2; do
+  case "$kind" in
+    A)
+      active_session="$session"
+      active_window="$window"
+      active_pane="$rest1"
+      ;;
+    W)
+      windows["$session	$window"]="$rest1"
+      layouts["$session	$window"]="$rest2"
+      ;;
+    P)
+      pane_index="$rest1"
+      pane_path="$rest2"
+      panes["$session	$window	$pane_index"]="$pane_path"
+      ;;
+  esac
+done <"$state_file"
+
+session_exists() {
+  tmx has-session -t "=$1" 2>/dev/null
+}
+
+notify() {
+  tmx display-message "$*" 2>/dev/null || printf '%s\n' "$*"
+}
+
+can_reuse_existing_session() {
+  local session="$1"
+  local window_count pane_count pane_command
+
+  [ "${TMUX_RECOVERY_REUSE_EMPTY:-1}" = "1" ] || return 1
+
+  window_count="$(tmx list-windows -t "=$session" -F '#{window_id}' | wc -l | tr -d ' ')"
+  pane_count="$(tmx list-panes -a -t "=$session" -F '#{pane_id}' | wc -l | tr -d ' ')"
+  pane_command="$(tmx list-panes -t "=$session" -F '#{pane_current_command}' | head -n 1)"
+
+  [ "$window_count" = "1" ] && [ "$pane_count" = "1" ] && [[ "$pane_command" =~ ^(zsh|bash|fish|sh)$ ]]
+}
+
+sorted_windows() {
+  printf '%s\n' "${!windows[@]}" | sort -t $'\t' -k1,1 -k2,2n
+}
+
+sorted_panes_for_window() {
+  local session="$1"
+  local window="$2"
+  printf '%s\n' "${!panes[@]}" | awk -F '\t' -v s="$session" -v w="$window" '$1 == s && $2 == w' | sort -t $'\t' -k3,3n
+}
+
+first_pane_path() {
+  local session="$1"
+  local window="$2"
+  local first_key
+  first_key="$(sorted_panes_for_window "$session" "$window" | head -n 1)"
+  printf '%s\n' "${panes[$first_key]:-$HOME}"
+}
+
+while IFS=$'\t' read -r session window; do
+  [ -n "$session" ] || continue
+  [ -z "${seen_sessions[$session]:-}" ] || continue
+  seen_sessions["$session"]=1
+
+  if session_exists "$session"; then
+    if can_reuse_existing_session "$session"; then
+      restored_sessions["$session"]=1
+      restored_count=$((restored_count + 1))
+
+      existing_window="$(tmx list-windows -t "=$session" -F '#{window_index}' | head -n 1)"
+      if [ "$existing_window" != "$window" ]; then
+        tmx move-window -s "=$session:$existing_window" -t "=$session:$window" 2>/dev/null || true
+      fi
+    else
+      skipped_count=$((skipped_count + 1))
+    fi
+    continue
+  fi
+
+  restored_count=$((restored_count + 1))
+  restored_sessions["$session"]=1
+  window_name="${windows["$session	$window"]}"
+  first_path="$(first_pane_path "$session" "$window")"
+  tmx new-session -d -s "$session" -n "$window_name" -c "$first_path"
+  tmx move-window -s "=$session:0" -t "=$session:$window" 2>/dev/null || true
+done < <(sorted_windows)
+
+while IFS=$'\t' read -r session window; do
+  [ -n "$session" ] || continue
+  [ -n "${restored_sessions[$session]:-}" ] || continue
+
+  window_name="${windows["$session	$window"]}"
+  first_path="$(first_pane_path "$session" "$window")"
+
+  if ! tmx list-windows -t "=$session" -F '#{window_index}' | grep -qx -- "$window"; then
+    tmx new-window -d -t "=$session:$window" -n "$window_name" -c "$first_path"
+  else
+    tmx rename-window -t "=$session:$window" "$window_name"
+  fi
+
+  pane_count="$(sorted_panes_for_window "$session" "$window" | wc -l | tr -d ' ')"
+  while [ "$(tmx list-panes -t "=$session:$window" -F '#{pane_index}' | wc -l | tr -d ' ')" -lt "$pane_count" ]; do
+    tmx split-window -d -t "=$session:$window" -c "$first_path"
+  done
+
+  while IFS=$'\t' read -r _pane_session _pane_window pane_index; do
+    pane_path="${panes["$session	$window	$pane_index"]}"
+    tmx respawn-pane -k -t "=$session:$window.$pane_index" -c "$pane_path"
+  done < <(sorted_panes_for_window "$session" "$window")
+
+  layout="${layouts["$session	$window"]}"
+  [ -n "$layout" ] && tmx select-layout -t "=$session:$window" "$layout" >/dev/null 2>&1 || true
+done < <(sorted_windows)
+
+if [ -n "$active_session" ] && session_exists "$active_session"; then
+  tmx select-window -t "=$active_session:$active_window" 2>/dev/null || true
+  tmx select-pane -t "=$active_session:$active_window.$active_pane" 2>/dev/null || true
+fi
+
+if [ "$restored_count" -eq 0 ]; then
+  notify "No tmux sessions restored; skipped $skipped_count existing session(s)."
+else
+  notify "Restored $restored_count tmux session(s); skipped $skipped_count existing session(s)."
+fi

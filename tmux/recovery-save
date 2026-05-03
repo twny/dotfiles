@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+state_file="${TMUX_RECOVERY_FILE:-$HOME/.local/state/tmux/recovery.tsv}"
+mkdir -p "$(dirname "$state_file")"
+
+tmx() {
+  ${TMUX_COMMAND:-tmux} "$@"
+}
+
+tmp_file="${state_file}.$$"
+trap 'rm -f "$tmp_file"' EXIT
+
+{
+  printf '# tmux recovery v1\n'
+  printf '# saved_at\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  if [ -n "${TMUX:-}" ]; then
+    printf 'A\t%s\t%s\t%s\n' \
+      "$(tmx display-message -p '#{session_name}')" \
+      "$(tmx display-message -p '#{window_index}')" \
+      "$(tmx display-message -p '#{pane_index}')"
+  fi
+
+  tmx list-windows -a -F 'W	#{session_name}	#{window_index}	#{window_name}	#{window_layout}'
+  tmx list-panes -a -F 'P	#{session_name}	#{window_index}	#{pane_index}	#{pane_current_path}'
+} >"$tmp_file"
+
+mv "$tmp_file" "$state_file"
+trap - EXIT
+
+tmx display-message "Saved tmux recovery state: $state_file" 2>/dev/null || \
+  printf 'Saved tmux recovery state: %s\n' "$state_file"

@@ -125,7 +125,11 @@ bindkey '^xe' edit-command-line
 bindkey '^x^e' edit-command-line
 
 # Settings
-setopt EXTENDED_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_ALL_DUPS INC_APPEND_HISTORY SHARE_HISTORY
+setopt EXTENDED_HISTORY
+setopt INC_APPEND_HISTORY
+setopt HIST_IGNORE_DUPS HIST_IGNORE_ALL_DUPS HIST_FIND_NO_DUPS HIST_SAVE_NO_DUPS
+setopt HIST_EXPIRE_DUPS_FIRST
+unsetopt SHARE_HISTORY
 HISTFILE=$HOME/.zsh_history
 HISTSIZE=1000000
 SAVEHIST=1000000
@@ -231,7 +235,7 @@ export BAT_THEME="Catppuccin-mocha"
 if command -v pyenv >/dev/null 2>&1; then
   export PYENV_ROOT="${PYENV_ROOT:-$HOME/.pyenv}"
   [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-  eval "$(pyenv init - zsh)"
+  eval "$(pyenv init - --no-rehash zsh)"
 fi
 
 # Keep machine-specific paths, work helpers, and secrets in .zshrc.local.

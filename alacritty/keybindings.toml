@@ -19,6 +19,10 @@ bindings = [
   { key = "D", mods = "Command|Shift", chars = "\u0002\"" },
   # ⌘ T    Create new Window ('tab')
   { key = "T", mods = "Command",chars = "\u0002c" },
+  # ⌘ S    Save tmux recovery state
+  { key = "S", mods = "Command", chars = "\u0002S" },
+  # ⌘ R    Restore tmux recovery state
+  { key = "R", mods = "Command", chars = "\u0002R" },
 
   #
   # NOTE: shift changes [] to {}. map `logical_key`s "{"  "}" for binding
@@ -30,17 +34,26 @@ bindings = [
 
   # ⌘ W    Kill Window and Kill pane
   { key = "W", mods = "Command", chars = "\u0002x" },
+  # ⌘ C    Copy tmux selection to macOS clipboard
+  { key = "C", mods = "Command", chars = "\u001B[5;30012~" },
+  # ⌘ V    Paste from macOS clipboard
+  { key = "V", mods = "Command", action = "Paste" },
+
+  # Terminal.app-style mark jumping
+  # ⌘ ↑ Previous mark
+  { key = "Up", mods = "Command", chars = "\u0002\u001B[A" },
+  # ⌘ ↓ Next mark
+  { key = "Down", mods = "Command", chars = "\u0002\u001B[B" },
 
   # Move between panes
-  # ⌘ ←  Move Left
-  { key = "Left", mods = "Command", chars = "\u0002\u001B[D" },
-  # ⌘ →  Move Right
-  { key = "Right", mods = "Command", chars = "\u0002\u001B[C" },
-  # ⌘ ↓  Move Down
-  { key = "Down", mods = "Command", chars = "\u0002\u001B[B" },
-  # ⌘ ↑ Move Up
-  { key = "Up", mods = "Command", chars = "\u0002\u001B[A" },
+  # ⌘ ⌥ ←  Move Left
+  { key = "Left", mods = "Command|Alt", chars = "\u0002\u001B[1;3D" },
+  # ⌘ ⌥ →  Move Right
+  { key = "Right", mods = "Command|Alt", chars = "\u0002\u001B[1;3C" },
+  # ⌘ ⌥ ↓  Move Down
+  { key = "Down", mods = "Command|Alt", chars = "\u0002\u001B[1;3B" },
+  # ⌘ ⌥ ↑ Move Up
+  { key = "Up", mods = "Command|Alt", chars = "\u0002\u001B[1;3A" },
   # ⌘ K Clear window (mimic macOS)
   { key = "K", mods = "Command", chars = "\u0002k" }
 ]
-
